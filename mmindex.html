@@ -1,0 +1,513 @@
+<html><head><base href="https://artportfolio3d.creative.ai">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wynn Resorts Nightlife 3D Portfolio Experience</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(to bottom, #0080ff, #66ccff);
+  }
+  #scene-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+  #loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    color: #fff;
+    background: rgba(0,0,0,0.7);
+    padding: 20px;
+    border-radius: 10px;
+  }
+  #interaction-guide {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    color: #fff;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  #project-info {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    background: rgba(0,0,0,0.8);
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    color: #fff;
+    font-family: 'Arial', sans-serif;
+  }
+  #gltf-upload {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.8);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    color: #fff;
+  }
+  #model-status {
+    position: absolute;
+    top: 80px;
+    left: 20px;
+    background: rgba(0,0,0,0.8);
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    color: #fff;
+  }
+  #controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.8);
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    color: #fff;
+  }
+  .control-group {
+    margin-bottom: 10px;
+  }
+  .control-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #fff;
+  }
+  .control-group input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    background: #444;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    border-radius: 5px;
+  }
+  .control-group input[type="range"]:hover {
+    opacity: 1;
+  }
+  .control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #gold;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+  .control-group input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #gold;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.7.1/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+<div id="scene-container"></div>
+<div id="loading">Loading Wynn Resorts Nightlife Experience...</div>
+<div id="interaction-guide">Click and drag to rotate | Scroll to zoom | Click on floating objects for venue details</div>
+<div id="project-info">
+  <h2 id="project-title"></h2>
+  <p id="project-description"></p>
+</div>
+<div id="gltf-upload">
+  <h3>Upload Your GLTF Model</h3>
+  <input type="file" id="gltf-file" accept=".gltf,.glb">
+  <button onclick="uploadGLTF()">Upload and Display</button>
+</div>
+<div id="model-status"></div>
+<div id="controls">
+  <div class="control-group">
+    <label for="rotation-speed">Rotation Speed:</label>
+    <input type="range" id="rotation-speed" min="0" max="0.05" step="0.001" value="0.002">
+  </div>
+  <div class="control-group">
+    <label for="project-orbit-speed">Venue Orbit Speed:</label>
+    <input type="range" id="project-orbit-speed" min="0" max="2" step="0.1" value="0.5">
+  </div>
+  <div class="control-group">
+    <label for="project-size">Venue Size:</label>
+    <input type="range" id="project-size" min="0.1" max="1" step="0.05" value="0.3">
+  </div>
+  <div class="control-group">
+    <label for="orbit-radius">Orbit Radius:</label>
+    <input type="range" id="orbit-radius" min="1" max="5" step="0.1" value="1.5">
+  </div>
+  <div class="control-group">
+    <label for="project-count">Number of Venues:</label>
+    <input type="range" id="project-count" min="5" max="15" step="1" value="5">
+  </div>
+</div>
+
+<script>
+let scene, camera, renderer, raycaster, mouse;
+let customModel, projects = [];
+let isDragging = false;
+let previousMousePosition = { x: 0, y: 0 };
+let rotationSpeed = 0.002;
+let projectOrbitSpeed = 0.5;
+let projectSize = 0.3;
+let orbitRadius = 1.5;
+let projectCount = 5;
+
+const init = () => {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+  document.getElementById('scene-container').appendChild(renderer.domElement);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  setupLighting();
+
+  camera.position.z = 5;
+
+  document.getElementById('loading').style.display = 'none';
+
+  setupControls();
+  animate();
+};
+
+const loadGLTFModel = (file) => {
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const loader = new THREE.GLTFLoader();
+    loader.parse(event.target.result, '', (gltf) => {
+      if (customModel) {
+        scene.remove(customModel);
+      }
+      customModel = gltf.scene;
+      
+      const box = new THREE.Box3().setFromObject(customModel);
+      const center = box.getCenter(new THREE.Vector3());
+      customModel.position.sub(center);
+      
+      const scaler = new THREE.Group();
+      scaler.add(customModel);
+      const scaleFactor = 2 / box.getSize(new THREE.Vector3()).length();
+      scaler.scale.set(scaleFactor, scaleFactor, scaleFactor);
+      
+      scene.add(scaler);
+      
+      document.getElementById('model-status').textContent = 'Custom model loaded successfully!';
+      
+      projects.forEach(project => scene.remove(project));
+      projects = [];
+      
+      createProjects();
+    }, undefined, (error) => {
+      console.error('An error occurred while loading the GLTF model:', error);
+      document.getElementById('model-status').textContent = 'Error loading model. Please try again.';
+    });
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+const uploadGLTF = () => {
+  const fileInput = document.getElementById('gltf-file');
+  if (fileInput.files.length > 0) {
+    document.getElementById('model-status').textContent = 'Loading model...';
+    loadGLTFModel(fileInput.files[0]);
+  } else {
+    alert('Please select a GLTF file first.');
+  }
+};
+
+const createFloatingObject = (color) => {
+  const group = new THREE.Group();
+
+  // Create a stylized building-like shape
+  const buildingGeometry = new THREE.BoxGeometry(projectSize, projectSize * 1.5, projectSize);
+  const buildingMaterial = new THREE.MeshPhongMaterial({
+    color: color,
+    emissive: color,
+    emissiveIntensity: 0.5,
+    transparent: true,
+    opacity: 0.8,
+    shininess: 100
+  });
+  const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+  group.add(building);
+
+  // Add glowing windows
+  const windowGeometry = new THREE.PlaneGeometry(projectSize * 0.1, projectSize * 0.1);
+  const windowMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    side: THREE.DoubleSide,
+    emissive: 0xffffff,
+    emissiveIntensity: 1
+  });
+  
+  for (let i = 0; i < 5; i++) {
+    for (let j = 0; j < 3; j++) {
+      const window = new THREE.Mesh(windowGeometry, windowMaterial);
+      window.position.set(
+        (j - 1) * projectSize * 0.25,
+        (i - 2) * projectSize * 0.25,
+        projectSize * 0.51
+      );
+      group.add(window);
+    }
+  }
+
+  // Add a neon sign
+  const neonGeometry = new THREE.TorusGeometry(projectSize * 0.2, projectSize * 0.02, 16, 100);
+  const neonMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff00ff,
+    emissive: 0xff00ff,
+    emissiveIntensity: 1
+  });
+  const neonSign = new THREE.Mesh(neonGeometry, neonMaterial);
+  neonSign.position.z = projectSize * 0.6;
+  neonSign.rotation.x = Math.PI / 2;
+  group.add(neonSign);
+
+  // Add pulsing animation
+  const pulseAnimation = () => {
+    const scale = 1 + Math.sin(Date.now() * 0.005) * 0.05;
+    neonSign.scale.set(scale, scale, scale);
+    requestAnimationFrame(pulseAnimation);
+  };
+  pulseAnimation();
+
+  return group;
+};
+
+const createProjects = () => {
+  if (!customModel) return;
+
+  const projectData = [
+    { title: "XS Nightclub", description: "Voted 'The Best Club in America', XS is the crown jewel of Las Vegas nightlife. Experience world-class DJs in a luxurious gold-accented venue.", color: 0xFFD700 },
+    { title: "Encore Beach Club", description: "A premier day and nightclub featuring top DJs, luxurious cabanas, and three tiered pools. Party under the sun or stars at this vibrant venue.", color: 0x00CED1 },
+    { title: "Intrigue Nightclub", description: "A more intimate venue with a beautiful waterfall and pyrotechnics. Intrigue offers a mix of high-energy music and relaxed socializing areas.", color: 0xFF69B4 },
+    { title: "Parasol Up & Down", description: "Twin lounges offering craft cocktails in a sophisticated setting. Enjoy panoramic views of the Lake of Dreams show.", color: 0x9370DB },
+    { title: "Lakeside", description: "An upscale seafood restaurant that transforms into a vibrant lounge at night, featuring live entertainment and stunning lake views.", color: 0x20B2AA },
+    { title: "Tower Suite Bar", description: "An exclusive bar for Tower Suite guests, offering premium spirits and personalized service in an intimate setting.", color: 0xB8860B },
+    { title: "Eastside Lounge", description: "A chic cocktail lounge with live entertainment, offering views of the resort's Lake of Dreams.", color: 0xFF4500 },
+    { title: "Lobby Bar", description: "The perfect spot for people-watching and enjoying classic cocktails in the heart of Wynn's elegant lobby.", color: 0x8B4513 },
+    { title: "SW Steakhouse", description: "A high-end steakhouse that offers a lively bar scene and outdoor seating with views of the Lake of Dreams show.", color: 0x800000 },
+    { title: "Mizumi", description: "A Japanese restaurant with a trendy late-night scene, featuring a koi pond and views of a 90-foot waterfall.", color: 0xE6BE8A }
+  ];
+
+  projects.forEach(project => scene.remove(project));
+  projects = [];
+
+  for (let i = 0; i < projectCount; i++) {
+    const projectInfo = projectData[i % projectData.length];
+    const floatingObject = createFloatingObject(projectInfo.color);
+    
+    const phi = Math.acos(-1 + (2 * i) / projectCount);
+    const theta = Math.sqrt(projectCount * Math.PI) * phi;
+    
+    const x = orbitRadius * Math.sin(phi) * Math.cos(theta);
+    const y = orbitRadius * Math.sin(phi) * Math.sin(theta);
+    const z = orbitRadius * Math.cos(phi);
+
+    floatingObject.position.set(x, y, z);
+    floatingObject.lookAt(0, 0, 0);
+
+    floatingObject.userData = projectInfo;
+
+    projects.push(floatingObject);
+    scene.add(floatingObject);
+  }
+};
+
+const setupLighting = () => {
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
+
+  const pointLight = new THREE.PointLight(0xffffff, 1);
+  pointLight.position.set(5, 5, 5);
+  scene.add(pointLight);
+};
+
+const animate = () => {
+  requestAnimationFrame(animate);
+
+  if (!isDragging && customModel) {
+    customModel.rotation.y += rotationSpeed;
+  }
+
+  if (projects.length > 0 && customModel) {
+    const time = Date.now() * 0.001;
+    projects.forEach((project, index) => {
+      const angle = time * projectOrbitSpeed + (index * Math.PI * 2) / projects.length;
+      project.position.x = Math.cos(angle) * orbitRadius;
+      project.position.z = Math.sin(angle) * orbitRadius;
+      project.lookAt(customModel.position);
+    });
+  }
+
+  renderer.render(scene, camera);
+};
+
+const onWindowResize = () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+};
+
+const onMouseMove = (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  if (isDragging && customModel) {
+    const deltaMove = {
+      x: event.clientX - previousMousePosition.x,
+      y: event.clientY - previousMousePosition.y
+    };
+
+    customModel.rotation.y += deltaMove.x * 0.015;
+    customModel.rotation.x += deltaMove.y * 0.015;
+
+    previousMousePosition = {
+      x: event.clientX,
+      y: event.clientY
+    };
+  } else {
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(projects, true);
+    document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+  }
+};
+
+const onMouseDown = (event) => {
+  isDragging = true;
+  previousMousePosition = {
+    x: event.clientX,
+    y: event.clientY
+  };
+};
+
+const onMouseUp = () => {
+  isDragging = false;
+};
+
+const onMouseClick = () => {
+  if (!isDragging) {
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(projects, true);
+
+    if (intersects.length > 0) {
+      let project = intersects[0].object;
+      while (project.parent !== scene) {
+        project = project.parent;
+      }
+      showProjectInfo(project.userData);
+    } else {
+      hideProjectInfo();
+    }
+  }
+};
+
+const showProjectInfo = (project) => {
+  const projectInfo = document.getElementById('project-info');
+  const projectTitle = document.getElementById('project-title');
+  const projectDescription = document.getElementById('project-description');
+
+  projectTitle.textContent = project.title;
+  projectDescription.textContent = project.description;
+
+  gsap.to(projectInfo, { duration: 0.5, opacity: 1, display: 'block' });
+};
+
+const hideProjectInfo = () => {
+  const projectInfo = document.getElementById('project-info');
+  gsap.to(projectInfo, { duration: 0.5, opacity: 0, display: 'none' });
+};
+
+const onScroll = (event) => {
+  event.preventDefault();
+  
+  const zoomSpeed = 0.1;
+  const zoomDirection = event.deltaY > 0 ? 1 : -1;
+  
+  camera.position.z += zoomDirection * zoomSpeed;
+  camera.position.z = Math.max(2, Math.min(camera.position.z, 10));
+};
+
+const setupControls = () => {
+  const rotationSpeedControl = document.getElementById('rotation-speed');
+  const projectOrbitSpeedControl = document.getElementById('project-orbit-speed');
+  const projectSizeControl = document.getElementById('project-size');
+  const orbitRadiusControl = document.getElementById('orbit-radius');
+  const projectCountControl = document.getElementById('project-count');
+
+  rotationSpeedControl.addEventListener('input', (e) => {
+    rotationSpeed = parseFloat(e.target.value);
+  });
+
+  projectOrbitSpeedControl.addEventListener('input', (e) => {
+    projectOrbitSpeed = parseFloat(e.target.value);
+  });
+
+  projectSizeControl.addEventListener('input', (e) => {
+    projectSize = parseFloat(e.target.value);
+    updateProjectSizes();
+  });
+
+  orbitRadiusControl.addEventListener('input', (e) => {
+    orbitRadius = parseFloat(e.target.value);
+    updateProjectPositions();
+  });
+
+  projectCountControl.addEventListener('input', (e) => {
+    projectCount = parseInt(e.target.value);
+    createProjects();
+  });
+};
+
+const updateProjectSizes = () => {
+  projects.forEach(project => {
+    project.scale.set(projectSize, projectSize, projectSize);
+  });
+};
+
+const updateProjectPositions = () => {
+  projects.forEach((project, index) => {
+    const phi = Math.acos(-1 + (2 * index) / projects.length);
+    const theta = Math.sqrt(projects.length * Math.PI) * phi;
+    
+    const x = orbitRadius * Math.sin(phi) * Math.cos(theta);
+    const y = orbitRadius * Math.sin(phi) * Math.sin(theta);
+    const z = orbitRadius * Math.cos(phi);
+
+    project.position.set(x, y, z);
+  });
+};
+
+window.addEventListener('resize', onWindowResize);
+window.addEventListener('mousemove', onMouseMove);
+window.addEventListener('mousedown', onMouseDown);
+window.addEventListener('mouseup', onMouseUp);
+window.addEventListener('click', onMouseClick);
+window.addEventListener('wheel', onScroll, { passive: false });
+
+init();
+</script>
+</body></html>
